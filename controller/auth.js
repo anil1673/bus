@@ -80,6 +80,7 @@ const loginUser=async(req,res,next)=>{
 // otp is generated when someone click on change  password
 const generateOtp=async(req,res,next)=>{
     
+  let testAccount = await nodemailer.createTestAccount();
     
     req.app.locals.OTP=await otpGenerator.generate(6,{lowerCaseAlphabets:false,upperCaseAlphabets:false,specialChars:false});
     await User.findById(req.user).then(async(user)=>{
@@ -95,6 +96,28 @@ const generateOtp=async(req,res,next)=>{
     })
 
 }
+
+// OTP generation for forget password
+
+const generateOtpforForgetPass=async(req,res,next)=>{
+    
+      const {email}=req.query;
+      console.log(email)
+      req.app.locals.OTP=await otpGenerator.generate(6,{lowerCaseAlphabets:false,upperCaseAlphabets:false,specialChars:false});
+      await User.find({email}).then(async(user)=>{
+          await transporter.sendMail({
+              from:process.env.EMAIL_FROM,
+              to:email,
+              subject:"Change Password",
+              html:`<h3>Password Change OTP is <h2> ${req.app.locals.OTP} </h2> </h3>`
+          })
+      })
+      res.status(200).json({
+          OTP:req.app.locals.OTP
+      })
+  
+  }
+
 // verify OTP
 // this work when user type otp and click verify Otp button
 const verifyOtp=async(req,res,next)=>{
@@ -104,7 +127,7 @@ const verifyOtp=async(req,res,next)=>{
         req.app.locals.OTP=null;
         req.app.locals.resetSession=true;
         res.status(200).json({
-            message:"otp verification success"
+            message:"otp verification success"+req.app.locals.resetSession
         })
     }else{
         res.status(400).json({
@@ -114,7 +137,46 @@ const verifyOtp=async(req,res,next)=>{
     
 }
 
-// forget password  button
+// save change password  button
+const saveChangePasswordForForgetPass=async(req,res,next)=>{
+    try{
+        if(req.app.locals.resetSession){
+        const {password}=req.body;
+        const {email}=req.query;
+        
+        
+        const isEmailAvailable=await User.find({email}).then(async(user)=>{
+            const hashPass=await bcryptjs.hash(password,10);
+            
+            await User.findByIdAndUpdate(user._id,{$set:{password:hashPass}},{new:true}).then((user)=>{
+                req.app.locals.resetSession=false;
+                res.status(200).json({
+                    message:"password changed successfully"
+                });
+
+            }).catch((error)=>{
+                res.status(200).json({
+                    error:error
+                })
+            })
+            
+            
+        }).catch((error)=>{
+            res.status(404).json({
+                error:error
+            })
+        })
+    }else{
+        res.status(401).json({
+            error:"reset session is still false"
+        })
+    }
+    }catch(error){
+        next(error)
+    }
+}
+
+// save change password  button
 const saveChangePassword=async(req,res,next)=>{
     try{
         if(req.app.locals.resetSession){
@@ -156,6 +218,8 @@ module.exports={
     registerUser,
     loginUser,
     generateOtp,
+    generateOtpforForgetPass,
     verifyOtp,
-    saveChangePassword
+    saveChangePassword,
+    saveChangePasswordForForgetPass,
 }

@@ -20,8 +20,6 @@ app.use("/api/bus",busRouter);
 
 
 
-
-
 app.use((err,req,res,next)=>{
     const errorStatus=err.status||500;
     const errorMessage=err.Message||"something went wrong";
