@@ -6,6 +6,7 @@ const cors=require("cors");
 const cookieParser=require("cookie-parser");
 const authRouter=require("./router/auth");
 const busRouter = require("./router/bus");
+
 require("./db/conn")
 
 app.use(cookieParser());
